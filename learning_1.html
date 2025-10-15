@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ms" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kemahiran Pemulihan: Warna & Saiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+        .bounce {
+            animation: bounce 0.5s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 20%, 60%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            80% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body class="h-full bg-blue-50 font-sans">
+    <!-- Simple Header -->
+    <header class="bg-white shadow-sm p-4 mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-center text-blue-700">Kemahiran Pemulihan: Warna & Saiz</h1>
+    </header>
+
+    <div class="max-w-4xl mx-auto px-4">
+        <!-- Simple Tab Buttons -->
+        <div class="flex gap-2 mb-4">
+            <button id="warnaTab" class="flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-blue-500 text-white" onclick="switchTab('warna')">
+                🎨 Warna
+            </button>
+            <button id="saizTab" class="flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-gray-200 text-gray-700" onclick="switchTab('saiz')">
+                📏 Saiz
+            </button>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
+            <div id="mainContent">
+                <!-- Content loads here -->
+            </div>
+        </div>
+
+        <!-- Simple Info Bar -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="text-sm text-gray-600">Kemajuan:</span>
+                    <span id="progressText" class="font-bold text-blue-600">1/6</span>
+                </div>
+                <div id="feedback" class="text-sm text-gray-600">Sila pilih aktiviti</div>
+            </div>
+        </div>
+
+        <!-- Simple Activity Menu -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <h3 class="font-bold text-gray-700 mb-3">Pilih Aktiviti:</h3>
+            <div id="activityButtons" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <!-- Activity buttons load here -->
+            </div>
+        </div>
+
+        <!-- Simple Footer Buttons -->
+        <div class="flex gap-2 pb-6">
+            <button id="resetBtn" class="flex-1 bg-gray-500 text-white py-3 rounded-lg font-bold" onclick="resetActivity()">
+                🔄 Reset
+            </button>
+            <button id="nextBtn" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold" onclick="nextActivity()">
+                ➡️ Seterusnya
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Simple data
+        const colors = [
+            { name: 'Merah', bg: 'bg-red-500', emoji: '🔴' },
+            { name: 'Biru', bg: 'bg-blue-500', emoji: '🔵' },
+            { name: 'Hijau', bg: 'bg-green-500', emoji: '🟢' },
+            { name: 'Kuning', bg: 'bg-yellow-400', emoji: '🟡' }
+        ];
+
+        const sizes = [
+            { name: 'Kecil', size: 'w-8 h-8', emoji: '🔴' },
+            { name: 'Besar', size: 'w-16 h-16', emoji: '🔵' }
+        ];
+
+        // App state
+        let currentTab = 'warna';
+        let currentActivity = 0;
+        let progress = { warna: 0, saiz: 0 };
+
+        // Activities
+        const warnaActivities = [
+            { name: 'Kenal Warna', func: showColorLearning },
+            { name: 'Nama Warna', func: showColorNaming },
+            { name: 'Padankan', func: showColorMatching },
+            { name: 'Asingkan', func: showColorSorting },
+            { name: 'Benda & Warna', func: showItemColor },
+            { name: 'Mewarna', func: showColoring }
+        ];
+
+        const saizActivities = [
+            { name: 'Kenal Saiz', func: showSizeLearning },
+            { name: 'Banding Saiz', func: showSizeCompare },
+            { name: 'Nama Saiz', func: showSizeNaming },
+            { name: 'Asingkan Saiz', func: showSizeSorting },
+            { name: 'Padankan Saiz', func: showSizeMatching },
+            { name: 'Warna Saiz', func: showSizeColoring }
+        ];
+
+        // Initialize
+        function init() {
+            switchTab('warna');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            currentActivity = 0;
+            
+            // Update tab buttons
+            document.getElementById('warnaTab').className = tab === 'warna' 
+                ? 'flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-blue-500 text-white'
+                : 'flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-gray-200 text-gray-700';
+            
+            document.getElementById('saizTab').className = tab === 'saiz' 
+                ? 'flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-blue-500 text-white'
+                : 'flex-1 py-3 px-4 rounded-lg font-bold text-lg bg-gray-200 text-gray-700';
+            
+            loadActivityButtons();
+            loadActivity(0);
+            updateProgress();
+        }
+
+        function loadActivityButtons() {
+            const activities = currentTab === 'warna' ? warnaActivities : saizActivities;
+            const container = document.getElementById('activityButtons');
+            
+            container.innerHTML = activities.map((activity, index) => `
+                <button onclick="loadActivity(${index})" 
+                        class="p-3 rounded-lg font-bold text-sm transition-colors ${index === currentActivity ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        id="actBtn${index}">
+                    ${index + 1}. ${activity.name}
+                </button>
+            `).join('');
+        }
+
+        function loadActivity(index) {
+            currentActivity = index;
+            const activities = currentTab === 'warna' ? warnaActivities : saizActivities;
+            
+            // Update button styles
+            loadActivityButtons();
+            
+            // Load activity content
+            activities[index].func();
+            
+            // Update progress
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const activities = currentTab === 'warna' ? warnaActivities : saizActivities;
+            document.getElementById('progressText').textContent = `${currentActivity + 1}/${activities.length}`;
+        }
+
+        function showFeedback(message, isSuccess = true) {
+            const feedback = document.getElementById('feedback');
+            feedback.innerHTML = `<span class="${isSuccess ? 'text-green-600' : 'text-red-600'}">${isSuccess ? '✅' : '❌'} ${message}</span>`;
+            
+            if (isSuccess) {
+                document.getElementById('mainContent').classList.add('bounce');
+                setTimeout(() => {
+                    document.getElementById('mainContent').classList.remove('bounce');
+                }, 500);
+            }
+        }
+
+        function resetActivity() {
+            loadActivity(currentActivity);
+        }
+
+        function nextActivity() {
+            const activities = currentTab === 'warna' ? warnaActivities : saizActivities;
+            if (currentActivity < activities.length - 1) {
+                loadActivity(currentActivity + 1);
+            } else {
+                showFeedback('Tahniah! Semua aktiviti selesai!');
+            }
+        }
+
+        // COLOR ACTIVITIES
+        function showColorLearning() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Kenal Warna</h2>
+                <p class="text-center mb-4">Klik warna untuk belajar!</p>
+                <div class="grid grid-cols-2 gap-4">
+                    ${colors.map(color => `
+                        <button onclick="learnColor('${color.name}')" 
+                                class="p-8 ${color.bg} rounded-lg hover:scale-105 transition-transform">
+                            <div class="text-4xl mb-2">${color.emoji}</div>
+                            <div class="text-white font-bold">${color.name}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function learnColor(colorName) {
+            showFeedback(`Ini warna ${colorName}!`);
+        }
+
+        function showColorNaming() {
+            const targetColor = colors[Math.floor(Math.random() * colors.length)];
+            const options = [targetColor, ...colors.filter(c => c !== targetColor).slice(0, 1)].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Nama Warna</h2>
+                <div class="text-center mb-6">
+                    <div class="w-24 h-24 ${targetColor.bg} rounded-lg mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-4xl">${targetColor.emoji}</span>
+                    </div>
+                    <p class="text-lg">Apakah nama warna ini?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    ${options.map(color => `
+                        <button onclick="checkColorName('${color.name}', '${targetColor.name}')" 
+                                class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                            ${color.name}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function checkColorName(selected, correct) {
+            if (selected === correct) {
+                showFeedback(`Betul! Ini warna ${correct}!`);
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback(`Cuba lagi! Ini warna ${correct}.`, false);
+            }
+        }
+
+        function showColorMatching() {
+            const targetColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Padankan Warna</h2>
+                <div class="text-center mb-6">
+                    <p class="mb-4">Cari warna yang sama dengan ini:</p>
+                    <div class="w-20 h-20 ${targetColor.bg} rounded-lg mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-3xl">${targetColor.emoji}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    ${colors.map(color => `
+                        <button onclick="matchColor('${color.name}', '${targetColor.name}')" 
+                                class="p-6 ${color.bg} rounded-lg hover:scale-105 transition-transform">
+                            <div class="text-3xl">${color.emoji}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function matchColor(selected, correct) {
+            if (selected === correct) {
+                showFeedback(`Betul! Warna yang sama!`);
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback(`Cuba lagi!`, false);
+            }
+        }
+
+        function showColorSorting() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Asingkan Warna</h2>
+                <p class="text-center mb-4">Klik warna yang MERAH sahaja!</p>
+                <div class="grid grid-cols-2 gap-4">
+                    ${colors.map(color => `
+                        <button onclick="sortColor('${color.name}')" 
+                                class="p-6 ${color.bg} rounded-lg hover:scale-105 transition-transform">
+                            <div class="text-3xl">${color.emoji}</div>
+                            <div class="text-white font-bold mt-2">${color.name}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function sortColor(colorName) {
+            if (colorName === 'Merah') {
+                showFeedback(`Betul! Ini warna merah!`);
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback(`Ini bukan warna merah!`, false);
+            }
+        }
+
+        function showItemColor() {
+            const items = [
+                { name: 'Pisang', color: 'Kuning', emoji: '🍌' },
+                { name: 'Epal', color: 'Merah', emoji: '🍎' }
+            ];
+            const item = items[Math.floor(Math.random() * items.length)];
+            
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Benda & Warna</h2>
+                <div class="text-center mb-6">
+                    <div class="text-6xl mb-4">${item.emoji}</div>
+                    <p class="text-lg">${item.name} berwarna apa?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    ${colors.map(color => `
+                        <button onclick="checkItemColor('${color.name}', '${item.color}')" 
+                                class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                            ${color.name}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function checkItemColor(selected, correct) {
+            if (selected === correct) {
+                showFeedback(`Betul! Warna yang tepat!`);
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback(`Cuba lagi!`, false);
+            }
+        }
+
+        function showColoring() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Mewarna</h2>
+                <p class="text-center mb-4">Warna bintang dengan KUNING!</p>
+                <div class="text-center mb-6">
+                    <svg width="120" height="120" class="mx-auto">
+                        <polygon points="60,10 70,40 100,40 78,58 88,88 60,70 32,88 42,58 20,40 50,40" 
+                                 fill="white" stroke="black" stroke-width="2" 
+                                 onclick="colorStar()" 
+                                 class="cursor-pointer hover:fill-gray-100"
+                                 id="star"/>
+                    </svg>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    ${colors.map(color => `
+                        <button onclick="selectColor('${color.name}')" 
+                                class="p-4 ${color.bg} rounded-lg hover:scale-105 transition-transform">
+                            <div class="text-white font-bold">${color.name}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            window.selectedColor = null;
+        }
+
+        function selectColor(colorName) {
+            window.selectedColor = colorName;
+            showFeedback(`Warna ${colorName} dipilih. Klik bintang!`);
+        }
+
+        function colorStar() {
+            if (!window.selectedColor) {
+                showFeedback('Pilih warna dulu!', false);
+                return;
+            }
+            
+            if (window.selectedColor === 'Kuning') {
+                document.getElementById('star').setAttribute('fill', 'yellow');
+                showFeedback('Betul! Bintang kuning!');
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                document.getElementById('star').setAttribute('fill', colors.find(c => c.name === window.selectedColor).bg.replace('bg-', '').replace('-500', '').replace('-400', ''));
+                showFeedback('Arahan kata warna kuning!', false);
+            }
+        }
+
+        // SIZE ACTIVITIES
+        function showSizeLearning() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Kenal Saiz</h2>
+                <p class="text-center mb-4">Klik untuk belajar saiz!</p>
+                <div class="flex justify-center items-end gap-8">
+                    <button onclick="learnSize('Kecil')" 
+                            class="p-4 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-bold">
+                        <div class="w-8 h-8 bg-white rounded-full mx-auto mb-2"></div>
+                        <div>Kecil</div>
+                    </button>
+                    <button onclick="learnSize('Besar')" 
+                            class="p-6 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-bold">
+                        <div class="w-16 h-16 bg-white rounded-full mx-auto mb-2"></div>
+                        <div>Besar</div>
+                    </button>
+                </div>
+            `;
+        }
+
+        function learnSize(sizeName) {
+            showFeedback(`Ini saiz ${sizeName}!`);
+        }
+
+        function showSizeCompare() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Banding Saiz</h2>
+                <div class="text-center mb-6">
+                    <div class="flex justify-center items-end gap-8 mb-4">
+                        <div class="text-4xl">🐜</div>
+                        <div class="text-8xl">🐘</div>
+                    </div>
+                    <p class="text-lg">Yang mana lebih besar?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="compareSize('Semut')" 
+                            class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                        🐜 Semut
+                    </button>
+                    <button onclick="compareSize('Gajah')" 
+                            class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                        🐘 Gajah
+                    </button>
+                </div>
+            `;
+        }
+
+        function compareSize(animal) {
+            if (animal === 'Gajah') {
+                showFeedback('Betul! Gajah lebih besar!');
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback('Gajah lebih besar dari semut!', false);
+            }
+        }
+
+        function showSizeNaming() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Nama Saiz</h2>
+                <div class="text-center mb-6">
+                    <div class="w-8 h-8 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                    <p class="text-lg">Apakah saiz bulatan ini?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="nameSize('Kecil')" 
+                            class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                        Kecil
+                    </button>
+                    <button onclick="nameSize('Besar')" 
+                            class="p-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold">
+                        Besar
+                    </button>
+                </div>
+            `;
+        }
+
+        function nameSize(sizeName) {
+            if (sizeName === 'Kecil') {
+                showFeedback('Betul! Ini saiz kecil!');
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback('Ini saiz kecil!', false);
+            }
+        }
+
+        function showSizeSorting() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Asingkan Saiz</h2>
+                <p class="text-center mb-4">Klik yang BESAR sahaja!</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="sortSize('Kecil')" 
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                        <div class="font-bold">Kecil</div>
+                    </button>
+                    <button onclick="sortSize('Besar')" 
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                        <div class="font-bold">Besar</div>
+                    </button>
+                </div>
+            `;
+        }
+
+        function sortSize(sizeName) {
+            if (sizeName === 'Besar') {
+                showFeedback('Betul! Ini yang besar!');
+                progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+            } else {
+                showFeedback('Ini bukan yang besar!', false);
+            }
+        }
+
+        function showSizeMatching() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Padankan Saiz</h2>
+                <p class="text-center mb-4">Cari dua yang sama saiz!</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="matchSizes(0)" id="match0"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="matchSizes(1)" id="match1"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-16 h-16 bg-red-500 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="matchSizes(2)" id="match2"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-8 h-8 bg-green-500 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="matchSizes(3)" id="match3"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-16 h-16 bg-yellow-500 rounded-full mx-auto"></div>
+                    </button>
+                </div>
+            `;
+            window.selectedMatches = [];
+        }
+
+        function matchSizes(index) {
+            const sizes = ['small', 'big', 'small', 'big'];
+            const button = document.getElementById(`match${index}`);
+            
+            if (window.selectedMatches.length === 0) {
+                window.selectedMatches.push(index);
+                button.classList.add('bg-blue-200');
+            } else if (window.selectedMatches.length === 1) {
+                const firstIndex = window.selectedMatches[0];
+                if (firstIndex === index) {
+                    // Same button, deselect
+                    button.classList.remove('bg-blue-200');
+                    window.selectedMatches = [];
+                    return;
+                }
+                
+                if (sizes[firstIndex] === sizes[index]) {
+                    // Match!
+                    button.classList.add('bg-green-200');
+                    document.getElementById(`match${firstIndex}`).classList.add('bg-green-200');
+                    showFeedback('Betul! Sama saiz!');
+                    progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+                } else {
+                    // No match
+                    button.classList.add('bg-red-200');
+                    setTimeout(() => {
+                        button.classList.remove('bg-red-200');
+                        document.getElementById(`match${firstIndex}`).classList.remove('bg-blue-200');
+                    }, 1000);
+                    showFeedback('Tidak sama saiz!', false);
+                }
+                window.selectedMatches = [];
+            }
+        }
+
+        function showSizeColoring() {
+            document.getElementById('mainContent').innerHTML = `
+                <h2 class="text-xl font-bold text-center mb-6">Warna Saiz</h2>
+                <p class="text-center mb-4">Warna semua yang KECIL dengan merah!</p>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <button onclick="colorBySize(0, 'small')" id="colorSize0"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-8 h-8 bg-white border-2 border-gray-400 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="colorBySize(1, 'big')" id="colorSize1"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-16 h-16 bg-white border-2 border-gray-400 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="colorBySize(2, 'small')" id="colorSize2"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-8 h-8 bg-white border-2 border-gray-400 rounded-full mx-auto"></div>
+                    </button>
+                    <button onclick="colorBySize(3, 'big')" id="colorSize3"
+                            class="p-6 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <div class="w-16 h-16 bg-white border-2 border-gray-400 rounded-full mx-auto"></div>
+                    </button>
+                </div>
+            `;
+            window.coloredSmall = 0;
+        }
+
+        function colorBySize(index, size) {
+            const circle = document.querySelector(`#colorSize${index} div`);
+            
+            if (size === 'small') {
+                circle.classList.remove('bg-white');
+                circle.classList.add('bg-red-500');
+                window.coloredSmall++;
+                
+                if (window.coloredSmall === 2) {
+                    showFeedback('Betul! Semua yang kecil diwarna!');
+                    progress[currentTab] = Math.max(progress[currentTab], currentActivity + 1);
+                } else {
+                    showFeedback('Bagus! Teruskan!');
+                }
+            } else {
+                circle.classList.remove('bg-white');
+                circle.classList.add('bg-red-500');
+                showFeedback('Ini bukan yang kecil!', false);
+            }
+        }
+
+        // Start the app
+        init();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98daf394127a0a32',t:'MTc2MDMxNzc2Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
