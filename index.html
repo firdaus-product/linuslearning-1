@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Klik & Belajar (Warna & Saiz) — Tanpa Tab</title>
+  <title>Klik & Belajar (Warna & Saiz) — Mesra Akses + TTS Stabil</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { box-sizing: border-box; }
     .bounce { animation: bounce 0.5s ease-in-out; }
-    @keyframes bounce {
-      0%,20%,60%,100%{transform:translateY(0)}
-      40%{transform:translateY(-10px)}80%{transform:translateY(-5px)}
-    }
+    @keyframes bounce { 0%,20%,60%,100%{transform:translateY(0)} 40%{transform:translateY(-10px)} 80%{transform:translateY(-5px)} }
+    /* Highlight info bar when text changes */
+    @keyframes highlight { 0% { background-color:#fde68a; } 100%{ background-color:#fef3c7; } }
+    .animate-highlight { animation: highlight 900ms ease-in-out; }
   </style>
 </head>
 <body class="h-full bg-blue-50 font-sans">
   <!-- Header -->
   <header class="bg-white shadow-sm p-4 mb-4">
     <h1 class="text-xl md:text-2xl font-bold text-center text-blue-700">
-      Klik & Belajar (Warna & Saiz)
+      Kemahiran Pemulihan: Klik & Belajar (Warna & Saiz)
     </h1>
   </header>
 
@@ -28,9 +28,18 @@
       <div id="mainContent"></div>
     </div>
 
-    <!-- Info Bar -->
+    <!-- Info Bar (mesra akses) -->
     <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
-      <div id="infoBar" class="text-sm text-gray-700">Klik mana-mana elemen untuk belajar.</div>
+      <div id="infoBarWrapper"
+           class="flex items-center justify-between gap-3 bg-amber-100 border border-amber-300 rounded-lg py-3 px-4 shadow-sm">
+        <div id="infoBar"
+             class="text-xl md:text-2xl font-extrabold text-gray-900 tracking-wide">
+          💡 Klik mana-mana elemen untuk belajar.
+        </div>
+        <button id="repeatBtn" title="Baca semula"
+                class="text-3xl md:text-4xl leading-none hover:scale-110 transition"
+                onclick="repeatSpeech()">🔊</button>
+      </div>
     </div>
 
     <!-- Activity Menu -->
@@ -61,19 +70,96 @@
       { name:'Awan',   color:'Putih',  emoji:'☁️' }
     ];
 
-    /* ============== TTS (perlahan) ============== */
-    function speak(text){
-      const msg = new SpeechSynthesisUtterance(text);
-      msg.lang = "ms-MY";
-      msg.rate = 0.75; msg.pitch = 1; msg.volume = 1;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(msg);
+    /* ============== TTS stabil + mesra browser ============== */
+    let lastSpoken = "";
+    let lastIcon = "💡";
+
+    const TTS = { ready:false, voices:[], voice:null, queue:[], unlocked:false };
+
+    function pickVoice() {
+      const pref = ["ms-MY","ms_MY","id-ID","id_ID","en-GB","en_US","en-US"];
+      for (const code of pref) {
+        const v = TTS.voices.find(v => v.lang === code);
+        if (v) return v;
+      }
+      return TTS.voices[0] || null;
     }
+
+    function flushQueue() {
+      if (!TTS.ready || !TTS.unlocked) return;
+      while (TTS.queue.length) _speakNow(TTS.queue.shift());
+    }
+
+    function initTTS() {
+      const synth = window.speechSynthesis;
+
+      function loadVoices() {
+        TTS.voices = synth.getVoices();
+        if (TTS.voices.length) {
+          TTS.voice = pickVoice();
+          TTS.ready = true;
+          flushQueue();
+        }
+      }
+      synth.addEventListener("voiceschanged", loadVoices);
+      loadVoices();
+
+      // Unlock selepas interaksi pertama (atasi autoplay)
+      const unlock = () => {
+        if (!TTS.unlocked) {
+          try { synth.cancel(); synth.resume(); } catch {}
+          TTS.unlocked = true;
+          flushQueue();
+        }
+      };
+      window.addEventListener("pointerdown", unlock, { once:true });
+      window.addEventListener("keydown", unlock, { once:true });
+
+      // Chrome kadang auto-pause → pulse resume sekejap
+      const tick = setInterval(()=>{ try{ synth.resume(); }catch{} }, 1000);
+      setTimeout(()=>clearInterval(tick), 5000);
+    }
+
+    function _speakNow(text) {
+      const synth = window.speechSynthesis;
+      const msg = new SpeechSynthesisUtterance();
+      msg.text = text;
+      msg.lang = (TTS.voice && TTS.voice.lang) || "ms-MY";
+      msg.voice = TTS.voice || null;
+      msg.rate = 0.75; msg.pitch = 1; msg.volume = 1;
+
+      if (synth.speaking) { try { synth.cancel(); } catch {} }
+      try { synth.speak(msg); } catch {}
+    }
+
+    function speak(text) {
+      lastSpoken = text;
+      if (!TTS.ready || !TTS.unlocked) { TTS.queue.push(text); return; }
+      _speakNow(text);
+    }
+
+    function repeatSpeech(){ if (lastSpoken) speak(lastSpoken); }
+
+    // Info bar + (opsyenal) suara, dengan highlight
+function say(text, icon = "💡", speakNow = true) {
+  lastIcon = icon;
+  const el = document.getElementById("infoBar");
+  el.innerHTML = `${icon} ${text}`;
+  el.classList.remove("animate-highlight");
+  void el.offsetWidth; // reset animasi
+  el.classList.add("animate-highlight");
+
+  // Simpan teks terakhir untuk butang 🔊
+  lastSpoken = text;
+
+  // Hanya baca jika dibenarkan
+  if (speakNow) speak(text);
+}
+
 
     /* ============== STATE & AKTIVITI ============== */
     let currentActivity = 0;
 
-    // Gabungan 6 aktiviti (1–3 Warna, 4–6 Saiz)
     const activities = [
       { name:'Kenal Warna',            func: showColorLearn },
       { name:'Benda & Warna',          func: showItemColorLearn },
@@ -84,6 +170,7 @@
     ];
 
     function init(){
+      initTTS();                // <<— aktifkan TTS stabil
       loadActivityButtons();
       loadActivity(0);
     }
@@ -100,18 +187,14 @@
     function loadActivity(i){
       currentActivity = i;
       activities[i].func();
-      setInfo('Klik mana-mana elemen untuk belajar.');
+      say('Klik mana-mana elemen untuk belajar.', '💡', false);
       document.getElementById('mainContent').classList.add('bounce');
       setTimeout(()=>document.getElementById('mainContent').classList.remove('bounce'),500);
       loadActivityButtons();
     }
 
     function resetActivity(){ loadActivity(currentActivity); }
-    function nextActivity(){
-      currentActivity = (currentActivity + 1) % activities.length;
-      loadActivity(currentActivity);
-    }
-    function setInfo(msg){ document.getElementById('infoBar').textContent = msg; }
+    function nextActivity(){ currentActivity = (currentActivity + 1) % activities.length; loadActivity(currentActivity); }
 
     /* ============== AKTIVITI WARNA ============== */
     function showColorLearn(){
@@ -121,7 +204,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           ${colors.map(c=>`
             <button class="p-8 ${c.bg} rounded-lg hover:scale-105 transition-transform text-white font-bold"
-                    onclick="setInfo('Ini warna ${c.name}.');speak('Ini warna ${c.name}');">
+                    onclick="say('Ini warna ${c.name}.','🎨');">
               <div class="text-4xl mb-2">${c.emoji}</div>${c.name}
             </button>`).join('')}
         </div>`;
@@ -134,7 +217,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           ${items.map(it=>`
             <button class="p-6 bg-gray-50 hover:bg-gray-100 rounded-lg border"
-                    onclick="setInfo('${it.name} berwarna ${it.color}.');speak('${it.name} berwarna ${it.color}');">
+                    onclick="say('${it.name} berwarna ${it.color}.','🎨');">
               <div class="text-5xl mb-2">${it.emoji}</div>
               <div class="font-bold">${it.name}</div>
             </button>`).join('')}
@@ -159,13 +242,12 @@
         </div>`;
       window.selectedPaint = null;
       document.getElementById('star').addEventListener('click', ()=>{
-        if(!window.selectedPaint){ setInfo('Pilih warna dahulu.'); speak('Pilih warna dahulu.'); return; }
+        if(!window.selectedPaint){ say('Pilih warna dahulu.','🎨'); return; }
         document.getElementById('star').setAttribute('fill', paintToFill(window.selectedPaint));
-        const text = `Bintang diwarnakan dengan warna ${window.selectedPaint}.`;
-        setInfo(text); speak(text);
+        say(`Bintang diwarnakan dengan warna ${window.selectedPaint}.`, '🎨');
       });
     }
-    function selectPaint(name){ window.selectedPaint = name; setInfo(`Warna ${name} dipilih.`); speak(`Warna ${name} dipilih.`); }
+    function selectPaint(name){ window.selectedPaint = name; say(`Warna ${name} dipilih.`, '🎨'); }
     function paintToFill(name){
       switch(name){
         case 'Merah': return '#ef4444';
@@ -183,11 +265,11 @@
         <p class="text-center mb-4">Klik untuk lihat nama saiz.</p>
         <div class="flex justify-center items-end gap-10">
           <button class="p-4 bg-blue-500 rounded-lg text-white font-bold"
-                  onclick="setInfo('Ini saiz kecil.'); speak('Ini saiz kecil');">
+                  onclick="say('Ini saiz kecil.','📏');">
             <div class="w-8 h-8 bg-white rounded-full mx-auto mb-2"></div>Kecil
           </button>
           <button class="p-6 bg-blue-500 rounded-lg text-white font-bold"
-                  onclick="setInfo('Ini saiz besar.'); speak('Ini saiz besar');">
+                  onclick="say('Ini saiz besar.','📏');">
             <div class="w-16 h-16 bg-white rounded-full mx-auto mb-2"></div>Besar
           </button>
         </div>`;
@@ -199,11 +281,11 @@
         <p class="text-center mb-4">Klik mana-mana untuk belajar konsep besar & kecil.</p>
         <div class="flex justify-center items-end gap-12 mb-4">
           <button class="p-4 bg-gray-100 rounded-lg"
-                  onclick="setInfo('Semut lebih kecil berbanding gajah.'); speak('Semut lebih kecil berbanding gajah');">
+                  onclick="say('Semut lebih kecil berbanding gajah.','📏');">
             <div class="text-5xl">🐜</div><div class="mt-2">Kecil</div>
           </button>
           <button class="p-4 bg-gray-100 rounded-lg"
-                  onclick="setInfo('Gajah lebih besar berbanding semut.'); speak('Gajah lebih besar berbanding semut');">
+                  onclick="say('Gajah lebih besar berbanding semut.','📏');">
             <div class="text-8xl">🐘</div><div class="mt-2">Besar</div>
           </button>
         </div>`;
@@ -264,15 +346,15 @@
       function updateSize(px){
         shapeEl.style.width = px+'px'; shapeEl.style.height = px+'px';
         const label = sizeToLabel(px);
-        sizeLab.textContent = label; setInfo(`Ini saiz ${label.toLowerCase()}.`); speak(`Ini saiz ${label.toLowerCase()}`);
+        sizeLab.textContent = label; say(`Ini saiz ${label.toLowerCase()}.`, '📏');
       }
       slider.addEventListener('input', e => updateSize(parseInt(e.target.value,10)));
 
       window.snapSize = (mode)=>{ const preset = mode==='kecil'?28 : mode==='besar'?100 : 60; slider.value = preset; updateSize(preset); };
-      window.setShape = (name)=>{ shapeEl.style.borderRadius = (name==='Bulat')?'9999px':'0px'; shapeLab.textContent=name; setInfo(`Bentuk ${name.toLowerCase()}.`); speak(`Bentuk ${name}`); };
-      window.setColor = (name)=>{ const map = { Merah:'#ef4444', Biru:'#3b82f6', Hijau:'#22c55e', Kuning:'#facc15' }; shapeEl.style.background = map[name]; colorLab.textContent=name; setInfo(`Warna ${name.toLowerCase()}.`); speak(`Warna ${name}`); };
+      window.setShape = (name)=>{ shapeEl.style.borderRadius = (name==='Bulat')?'9999px':'0px'; shapeLab.textContent=name; say(`Bentuk ${name.toLowerCase()}.`, '🔺'); };
+      window.setColor = (name)=>{ shapeEl.style.background = colorMap[name]; colorLab.textContent=name; say(`Warna ${name.toLowerCase()}.`, '🎨'); };
 
-      updateSize(48); setShape('Bulat'); setColor('Biru');
+      updateSize(48); window.setShape('Bulat'); window.setColor('Biru');
     }
 
     // GO!
