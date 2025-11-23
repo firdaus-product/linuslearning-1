@@ -1,364 +1,412 @@
 <!DOCTYPE html>
-<html lang="ms" class="h-full">
+<html lang="ms-MY">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Klik & Belajar (Warna & Saiz) — Mesra Akses + TTS Stabil</title>
+  <title>Warna & Saiz: Klik & Belajar</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
   <style>
-    body { box-sizing: border-box; }
-    .bounce { animation: bounce 0.5s ease-in-out; }
-    @keyframes bounce { 0%,20%,60%,100%{transform:translateY(0)} 40%{transform:translateY(-10px)} 80%{transform:translateY(-5px)} }
-    /* Highlight info bar when text changes */
-    @keyframes highlight { 0% { background-color:#fde68a; } 100%{ background-color:#fef3c7; } }
-    .animate-highlight { animation: highlight 900ms ease-in-out; }
+    /* --- UI STYLE (MASTER REFERENCE) --- */
+    body { 
+        font-family: 'Fredoka', sans-serif; 
+        background-color: #f0fdf4; 
+        background-image: radial-gradient(#86efac 2px, transparent 2px); 
+        background-size: 30px 30px; 
+    }
+    
+    .game-card { 
+        background: white; 
+        border: 4px solid #475569; 
+        box-shadow: 8px 8px 0px #00000020; 
+        border-radius: 1.5rem; 
+        min-height: 600px; 
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        overflow: hidden; 
+    }
+    
+    /* Buttons */
+    .btn-3d { 
+        transition: all 0.1s; 
+        border-bottom-width: 6px; 
+        border-color: rgba(0,0,0,0.2); 
+        transform: translateY(0); 
+        cursor: pointer; 
+        display: inline-block; 
+    }
+    .btn-3d:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 2px; box-shadow: none; }
+    
+    /* Custom Range Slider (Neubrutalism Style) */
+    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 32px; width: 32px; border-radius: 50%;
+      background: #3b82f6; border: 4px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      cursor: pointer; margin-top: -12px;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%; height: 8px; cursor: pointer; background: #bfdbfe; border-radius: 5px; border: 1px solid #60a5fa;
+    }
+
+    /* Animations */
+    .pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    .ring-focus { outline: 4px solid #3b82f6; outline-offset: 4px; }
+
   </style>
 </head>
-<body class="h-full bg-blue-50 font-sans">
-  <!-- Header -->
-  <header class="bg-white shadow-sm p-4 mb-4">
-    <h1 class="text-xl md:text-2xl font-bold text-center text-blue-700">
-      Kemahiran Pemulihan: Klik & Belajar (Warna & Saiz)
-    </h1>
-  </header>
+<body class="min-h-screen text-slate-800 pb-10">
 
-  <div class="max-w-4xl mx-auto px-4">
-    <!-- Main Card -->
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
-      <div id="mainContent"></div>
-    </div>
-
-    <!-- Info Bar (mesra akses) -->
-    <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
-      <div id="infoBarWrapper"
-           class="flex items-center justify-between gap-3 bg-amber-100 border border-amber-300 rounded-lg py-3 px-4 shadow-sm">
-        <div id="infoBar"
-             class="text-xl md:text-2xl font-extrabold text-gray-900 tracking-wide">
-          💡 Klik mana-mana elemen untuk belajar.
-        </div>
-        <button id="repeatBtn" title="Baca semula"
-                class="text-3xl md:text-4xl leading-none hover:scale-110 transition"
-                onclick="repeatSpeech()">🔊</button>
+  <div class="fixed top-4 left-0 right-0 z-50 px-4 pointer-events-none">
+    <div class="max-w-4xl mx-auto bg-green-400 border-4 border-green-600 rounded-full px-6 py-3 shadow-xl flex items-center justify-between pointer-events-auto transform hover:scale-[1.01] transition-transform">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl animate-bounce">🎨</span>
+        <span id="info-text" class="text-xl font-bold text-green-900 leading-none mt-1">Warna & Saiz</span>
       </div>
+      <button id="speak-btn" onclick="speakInfo()" class="bg-white hover:bg-green-50 text-green-600 border-2 border-green-200 rounded-full p-2 transition-colors shadow-sm">🔊</button>
+    </div>
+  </div>
+  <div class="h-24"></div>
+
+  <div class="max-w-6xl mx-auto p-4">
+    
+    <div class="game-card p-8 mb-8">
+        <div id="activity-content" class="w-full relative z-10 flex flex-col items-center justify-center h-full transition-opacity duration-200">
+            <div class="py-10 text-center">
+                <div class="text-8xl mb-6 animate-pulse">🎯</div>
+                <h2 class="text-5xl font-bold text-emerald-600 mb-4">Kemahiran Asas</h2>
+                <p class="text-2xl text-slate-500 mb-8 font-semibold">Pilih aktiviti di bawah.</p>
+                <div class="text-4xl animate-bounce">👇</div>
+            </div>
+        </div>
     </div>
 
-    <!-- Activity Menu -->
-    <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
-      <h3 class="font-bold text-gray-700 mb-3">Pilih Aktiviti:</h3>
-      <div id="activityButtons" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
-    </div>
+    <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-2 border-white">
+      <h3 class="text-2xl font-bold text-slate-700 mb-4 text-center">🎮 Pilih Aktiviti</h3>
+      
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+        <button onclick="loadActivity(1)" class="btn-3d bg-blue-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">🔴 Kenal Warna</button>
+        <button onclick="loadActivity(2)" class="btn-3d bg-green-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">🍌 Benda & Warna</button>
+        <button onclick="loadActivity(3)" class="btn-3d bg-purple-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">🖍️ Mewarna</button>
+        <button onclick="loadActivity(4)" class="btn-3d bg-orange-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">📏 Kenal Saiz</button>
+        <button onclick="loadActivity(5)" class="btn-3d bg-pink-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">⚖️ Banding Saiz</button>
+        <button onclick="loadActivity(6)" class="btn-3d bg-cyan-500 text-white font-bold py-3 px-2 rounded-xl text-sm md:text-base">🎚️ Eksplorasi</button>
+      </div>
 
-    <!-- Footer Buttons -->
-    <div class="flex gap-2 pb-6">
-      <button class="flex-1 bg-gray-500 text-white py-3 rounded-lg font-bold" onclick="resetActivity()">🔄 Bersih</button>
-      <button class="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold" onclick="nextActivity()">➡️ Seterusnya</button>
+      <div class="flex justify-center gap-4 border-t-2 border-slate-100 pt-6">
+        <button onclick="clearActivity()" class="btn-3d bg-slate-400 text-white font-bold py-2 px-6 rounded-full text-lg">🏠 Menu</button>
+        <button onclick="nextActivity()" class="btn-3d bg-indigo-500 text-white font-bold py-2 px-8 rounded-full text-xl">Seterusnya ➡️</button>
+      </div>
     </div>
   </div>
 
   <script>
-    /* ================== DATA ================== */
-    const colors = [
-      { name: 'Merah', bg: 'bg-red-500', emoji:'🔴' },
-      { name: 'Biru',  bg: 'bg-blue-500', emoji:'🔵' },
-      { name: 'Hijau', bg: 'bg-green-500', emoji:'🟢' },
-      { name: 'Kuning',bg: 'bg-yellow-400', emoji:'🟡' }
-    ];
-    const items = [
-      { name:'Pisang', color:'Kuning', emoji:'🍌' },
-      { name:'Epal',   color:'Merah',  emoji:'🍎' },
-      { name:'Daun',   color:'Hijau',  emoji:'🍃' },
-      { name:'Awan',   color:'Putih',  emoji:'☁️' }
-    ];
-
-    /* ============== TTS stabil + mesra browser ============== */
-    let lastSpoken = "";
-    let lastIcon = "💡";
-
-    const TTS = { ready:false, voices:[], voice:null, queue:[], unlocked:false };
-
-    function pickVoice() {
-      const pref = ["ms-MY","ms_MY","id-ID","id_ID","en-GB","en_US","en-US"];
-      for (const code of pref) {
-        const v = TTS.voices.find(v => v.lang === code);
-        if (v) return v;
-      }
-      return TTS.voices[0] || null;
-    }
-
-    function flushQueue() {
-      if (!TTS.ready || !TTS.unlocked) return;
-      while (TTS.queue.length) _speakNow(TTS.queue.shift());
-    }
-
-    function initTTS() {
-      const synth = window.speechSynthesis;
-
-      function loadVoices() {
-        TTS.voices = synth.getVoices();
-        if (TTS.voices.length) {
-          TTS.voice = pickVoice();
-          TTS.ready = true;
-          flushQueue();
-        }
-      }
-      synth.addEventListener("voiceschanged", loadVoices);
-      loadVoices();
-
-      // Unlock selepas interaksi pertama (atasi autoplay)
-      const unlock = () => {
-        if (!TTS.unlocked) {
-          try { synth.cancel(); synth.resume(); } catch {}
-          TTS.unlocked = true;
-          flushQueue();
-        }
-      };
-      window.addEventListener("pointerdown", unlock, { once:true });
-      window.addEventListener("keydown", unlock, { once:true });
-
-      // Chrome kadang auto-pause → pulse resume sekejap
-      const tick = setInterval(()=>{ try{ synth.resume(); }catch{} }, 1000);
-      setTimeout(()=>clearInterval(tick), 5000);
-    }
-
-    function _speakNow(text) {
-      const synth = window.speechSynthesis;
-      const msg = new SpeechSynthesisUtterance();
-      msg.text = text;
-      msg.lang = (TTS.voice && TTS.voice.lang) || "ms-MY";
-      msg.voice = TTS.voice || null;
-      msg.rate = 0.75; msg.pitch = 1; msg.volume = 1;
-
-      if (synth.speaking) { try { synth.cancel(); } catch {} }
-      try { synth.speak(msg); } catch {}
-    }
-
-    function speak(text) {
-      lastSpoken = text;
-      if (!TTS.ready || !TTS.unlocked) { TTS.queue.push(text); return; }
-      _speakNow(text);
-    }
-
-    function repeatSpeech(){ if (lastSpoken) speak(lastSpoken); }
-
-    // Info bar + (opsyenal) suara, dengan highlight
-function say(text, icon = "💡", speakNow = true) {
-  lastIcon = icon;
-  const el = document.getElementById("infoBar");
-  el.innerHTML = `${icon} ${text}`;
-  el.classList.remove("animate-highlight");
-  void el.offsetWidth; // reset animasi
-  el.classList.add("animate-highlight");
-
-  // Simpan teks terakhir untuk butang 🔊
-  lastSpoken = text;
-
-  // Hanya baca jika dibenarkan
-  if (speakNow) speak(text);
-}
-
-
-    /* ============== STATE & AKTIVITI ============== */
+    /* --- STANDARD HELPERS + TTS STABIL --- */
     let currentActivity = 0;
+    let ttsEnabled = false;
+    let currentInfo = "Pilih aktiviti untuk mula belajar!";
+    let msVoice = null;
 
-    const activities = [
-      { name:'Kenal Warna',            func: showColorLearn },
-      { name:'Benda & Warna',          func: showItemColorLearn },
-      { name:'Mewarna (Klik Bintang)', func: showFreeColoring },
-      { name:'Kenal Saiz',             func: showSizeLearn },
-      { name:'Banding Saiz',           func: showSizeCompareLearn },
-      { name:'Eksplorasi Saiz & Warna',func: showSizeExplore }
-    ];
+    // Load voices robustly
+    function loadVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        msVoice = voices.find(v => v.lang === 'ms-MY' || v.lang === 'ms_MY') || 
+                  voices.find(v => v.lang.includes('ms')) || 
+                  voices.find(v => v.lang.includes('id')) || // Fallback Indonesia
+                  voices[0];
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices(); // Initial load
 
-    function init(){
-      initTTS();                // <<— aktifkan TTS stabil
-      loadActivityButtons();
-      loadActivity(0);
+    function speak(text) { 
+        if (!ttsEnabled || !('speechSynthesis' in window)) return; 
+        window.speechSynthesis.cancel(); 
+        const u = new SpeechSynthesisUtterance(text); 
+        u.lang = 'ms-MY'; 
+        u.rate = 0.85; 
+        u.pitch = 1.0; 
+        if(msVoice) u.voice = msVoice;
+        window.speechSynthesis.speak(u); 
+    }
+    
+    function setInfo(text) { 
+        currentInfo = text; const infoEl = document.getElementById('info-text'); 
+        infoEl.style.opacity = 0; setTimeout(() => { infoEl.textContent = text; infoEl.style.opacity = 1; }, 200); 
+    }
+    
+    function speakInfo() { 
+        if (!ttsEnabled) { 
+            ttsEnabled = true; 
+            document.getElementById('speak-btn').classList.add('bg-green-100', 'text-green-600'); 
+            // Unlock audio context trick
+            const u = new SpeechSynthesisUtterance(''); window.speechSynthesis.speak(u);
+        } 
+        speak(currentInfo); 
     }
 
-    function loadActivityButtons(){
-      const container = document.getElementById('activityButtons');
-      container.innerHTML = activities.map((a,i)=>`
-        <button onclick="loadActivity(${i})"
-          class="p-3 rounded-lg font-bold text-sm transition-colors ${i===currentActivity?'bg-blue-500 text-white':'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
-          ${i+1}. ${a.name}
-        </button>`).join('');
+    function triggerWin() { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); }
+
+    /* --- ROUTER --- */
+    function loadActivity(n) {
+      currentActivity = n;
+      const content = document.getElementById('activity-content');
+      content.style.opacity = 0;
+      setTimeout(() => {
+          if (n === 1) setupAct1(content);
+          else if (n === 2) setupAct2(content);
+          else if (n === 3) setupAct3(content);
+          else if (n === 4) setupAct4(content);
+          else if (n === 5) setupAct5(content);
+          else if (n === 6) setupAct6(content);
+          content.style.opacity = 1; 
+      }, 200);
     }
 
-    function loadActivity(i){
-      currentActivity = i;
-      activities[i].func();
-      say('Klik mana-mana elemen untuk belajar.', '💡', false);
-      document.getElementById('mainContent').classList.add('bounce');
-      setTimeout(()=>document.getElementById('mainContent').classList.remove('bounce'),500);
-      loadActivityButtons();
+    function clearActivity() {
+        currentActivity = 0;
+        document.getElementById('activity-content').innerHTML = `<div class="py-10 text-center"><div class="text-8xl mb-6 animate-pulse">🎯</div><h2 class="text-5xl font-bold text-emerald-600 mb-4">Warna & Saiz</h2><p class="text-2xl text-slate-500 mb-8 font-semibold">Pilih butang di bawah.</p></div>`;
+        setInfo("Pilih aktiviti di bawah.");
+    }
+    
+    function nextActivity() { let next = currentActivity + 1; if (next > 6) next = 1; loadActivity(next); }
+
+    /* =========================================
+       LOGIK AKTIVITI (DIPORT & DIGAYAKAN)
+       ========================================= */
+
+    /* --- 1. Kenal Warna --- */
+    function setupAct1(content) {
+        setInfo("Klik warna untuk tahu namanya.");
+        const colors = [
+            { name: 'Merah', bg: 'bg-red-500', emoji:'🔴', border: 'border-red-700' },
+            { name: 'Biru',  bg: 'bg-blue-500', emoji:'🔵', border: 'border-blue-700' },
+            { name: 'Hijau', bg: 'bg-green-500', emoji:'🟢', border: 'border-green-700' },
+            { name: 'Kuning',bg: 'bg-yellow-400', emoji:'🟡', border: 'border-yellow-600' }
+        ];
+
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-slate-700 mb-6">🔴 Kenal Warna</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    ${colors.map(c => `
+                        <button onclick="sayColor('${c.name}')" 
+                            class="btn-3d ${c.bg} ${c.border} p-8 rounded-2xl flex flex-col items-center justify-center min-h-[160px] hover:scale-105 transition-transform">
+                            <div class="text-6xl mb-3 shadow-sm rounded-full bg-white/20 p-2">${c.emoji}</div>
+                            <div class="text-2xl font-black text-white drop-shadow-md">${c.name}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    window.sayColor = function(name) {
+        const msg = `Ini warna ${name}.`;
+        setInfo(msg); speak(msg);
     }
 
-    function resetActivity(){ loadActivity(currentActivity); }
-    function nextActivity(){ currentActivity = (currentActivity + 1) % activities.length; loadActivity(currentActivity); }
+    /* --- 2. Benda & Warna --- */
+    function setupAct2(content) {
+        setInfo("Klik gambar untuk tahu warnanya.");
+        const items = [
+             { name:'Pisang', color:'Kuning', emoji:'🍌' },
+             { name:'Epal',   color:'Merah',  emoji:'🍎' },
+             { name:'Daun',   color:'Hijau',  emoji:'🍃' },
+             { name:'Awan',   color:'Putih',  emoji:'☁️' }
+        ];
 
-    /* ============== AKTIVITI WARNA ============== */
-    function showColorLearn(){
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Kenal Warna</h2>
-        <p class="text-center mb-4">Klik warna untuk tahu namanya.</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          ${colors.map(c=>`
-            <button class="p-8 ${c.bg} rounded-lg hover:scale-105 transition-transform text-white font-bold"
-                    onclick="say('Ini warna ${c.name}.','🎨');">
-              <div class="text-4xl mb-2">${c.emoji}</div>${c.name}
-            </button>`).join('')}
-        </div>`;
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-slate-700 mb-6">🍌 Benda & Warna</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    ${items.map(it => `
+                        <button onclick="sayItemColor('${it.name}', '${it.color}')" 
+                            class="btn-3d bg-white border-slate-200 p-6 rounded-2xl flex flex-col items-center hover:bg-slate-50">
+                            <div class="text-6xl mb-3">${it.emoji}</div>
+                            <div class="text-xl font-bold text-slate-700">${it.name}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    window.sayItemColor = function(name, color) {
+        const msg = `${name} berwarna ${color}.`;
+        setInfo(msg); speak(msg);
     }
 
-    function showItemColorLearn(){
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Benda & Warna</h2>
-        <p class="text-center mb-4">Klik gambar untuk tahu warna biasa bagi benda itu.</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          ${items.map(it=>`
-            <button class="p-6 bg-gray-50 hover:bg-gray-100 rounded-lg border"
-                    onclick="say('${it.name} berwarna ${it.color}.','🎨');">
-              <div class="text-5xl mb-2">${it.emoji}</div>
-              <div class="font-bold">${it.name}</div>
-            </button>`).join('')}
-        </div>`;
+    /* --- 3. Mewarna (SVG Star) --- */
+    let selectedPaint = null;
+    function setupAct3(content) {
+        setInfo("Pilih warna, kemudian klik bintang.");
+        selectedPaint = null;
+        const colors = [
+            { name: 'Merah', hex: '#ef4444', bg:'bg-red-500', b:'border-red-700' },
+            { name: 'Biru',  hex: '#3b82f6', bg:'bg-blue-500', b:'border-blue-700' },
+            { name: 'Hijau', hex: '#22c55e', bg:'bg-green-500', b:'border-green-700' },
+            { name: 'Kuning',hex: '#facc15', bg:'bg-yellow-400',b:'border-yellow-600' }
+        ];
+
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-purple-600 mb-6">🖍️ Mewarna</h3>
+                
+                <div class="bg-slate-50 rounded-3xl p-8 mb-8 border-4 border-slate-200 inline-block shadow-inner">
+                    <svg width="200" height="200" viewBox="0 0 140 140" class="mx-auto filter drop-shadow-xl">
+                        <polygon id="star-shape" points="70,12 82,48 118,48 89,68 100,104 70,82 40,104 51,68 22,48 58,48"
+                            fill="white" stroke="#334155" stroke-width="3" stroke-linejoin="round"
+                            class="cursor-pointer hover:opacity-90 transition-fill duration-300"
+                            onclick="paintStar()"/>
+                    </svg>
+                </div>
+
+                <div class="flex justify-center gap-4">
+                    ${colors.map(c => `
+                        <button onclick="selectPaint('${c.name}', '${c.hex}', this)" 
+                            class="paint-btn btn-3d ${c.bg} ${c.b} text-white font-bold py-3 px-6 rounded-xl text-lg">
+                            ${c.name}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    window.selectPaint = function(name, hex, el) {
+        selectedPaint = {name, hex};
+        document.querySelectorAll('.paint-btn').forEach(b => b.classList.remove('ring-focus'));
+        el.classList.add('ring-focus');
+        setInfo(`Warna ${name} dipilih.`);
+    }
+    window.paintStar = function() {
+        if(!selectedPaint) {
+            speak("Sila pilih warna dahulu.");
+            return;
+        }
+        document.getElementById('star-shape').setAttribute('fill', selectedPaint.hex);
+        const msg = `Bintang diwarnakan ${selectedPaint.name}.`;
+        setInfo(msg); speak(msg);
+        triggerWin();
     }
 
-    function showFreeColoring(){
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Mewarna (Klik Bintang)</h2>
-        <p class="text-center mb-4">Pilih warna, kemudian klik bintang untuk mewarnakannya.</p>
-        <div class="text-center mb-6">
-          <svg width="140" height="140" class="mx-auto">
-            <polygon id="star" points="70,12 82,48 118,48 89,68 100,104 70,82 40,104 51,68 22,48 58,48"
-              fill="white" stroke="black" stroke-width="2"
-              class="cursor-pointer hover:opacity-90"/>
-          </svg>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          ${colors.map(c=>`
-            <button class="p-3 ${c.bg} rounded-lg text-white font-bold"
-                    onclick="selectPaint('${c.name}')">${c.name}</button>`).join('')}
-        </div>`;
-      window.selectedPaint = null;
-      document.getElementById('star').addEventListener('click', ()=>{
-        if(!window.selectedPaint){ say('Pilih warna dahulu.','🎨'); return; }
-        document.getElementById('star').setAttribute('fill', paintToFill(window.selectedPaint));
-        say(`Bintang diwarnakan dengan warna ${window.selectedPaint}.`, '🎨');
-      });
+    /* --- 4. Kenal Saiz --- */
+    function setupAct4(content) {
+        setInfo("Klik untuk lihat nama saiz.");
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-orange-600 mb-10">📏 Kenal Saiz</h3>
+                <div class="flex justify-center items-end gap-12 h-64">
+                    <button onclick="saySize('Kecil')" 
+                        class="btn-3d bg-orange-100 border-orange-300 p-4 rounded-2xl flex flex-col items-center hover:bg-orange-200">
+                        <div class="w-16 h-16 bg-orange-500 rounded-full shadow-lg mb-4"></div>
+                        <span class="text-xl font-bold text-orange-800">Kecil</span>
+                    </button>
+                    
+                    <button onclick="saySize('Besar')" 
+                        class="btn-3d bg-orange-100 border-orange-300 p-8 rounded-2xl flex flex-col items-center hover:bg-orange-200">
+                        <div class="w-32 h-32 bg-orange-500 rounded-full shadow-lg mb-4"></div>
+                        <span class="text-3xl font-bold text-orange-800">Besar</span>
+                    </button>
+                </div>
+            </div>
+        `;
     }
-    function selectPaint(name){ window.selectedPaint = name; say(`Warna ${name} dipilih.`, '🎨'); }
-    function paintToFill(name){
-      switch(name){
-        case 'Merah': return '#ef4444';
-        case 'Biru' : return '#3b82f6';
-        case 'Hijau': return '#22c55e';
-        case 'Kuning':return '#facc15';
-        default: return 'white';
-      }
+    window.saySize = function(size) {
+        const msg = `Ini saiz ${size}.`;
+        setInfo(msg); speak(msg);
     }
 
-    /* ============== AKTIVITI SAIZ ============== */
-    function showSizeLearn(){
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Kenal Saiz</h2>
-        <p class="text-center mb-4">Klik untuk lihat nama saiz.</p>
-        <div class="flex justify-center items-end gap-10">
-          <button class="p-4 bg-blue-500 rounded-lg text-white font-bold"
-                  onclick="say('Ini saiz kecil.','📏');">
-            <div class="w-8 h-8 bg-white rounded-full mx-auto mb-2"></div>Kecil
-          </button>
-          <button class="p-6 bg-blue-500 rounded-lg text-white font-bold"
-                  onclick="say('Ini saiz besar.','📏');">
-            <div class="w-16 h-16 bg-white rounded-full mx-auto mb-2"></div>Besar
-          </button>
-        </div>`;
+    /* --- 5. Banding Saiz --- */
+    function setupAct5(content) {
+        setInfo("Klik haiwan untuk bandingkan saiz.");
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-pink-600 mb-8">⚖️ Banding Saiz</h3>
+                <div class="flex justify-center items-center gap-8 md:gap-16">
+                    <button onclick="compareSize('Semut', 'Kecil')" 
+                        class="btn-3d bg-pink-50 border-pink-200 p-6 rounded-3xl hover:bg-pink-100">
+                        <div class="text-6xl mb-2">🐜</div>
+                        <div class="text-xl font-bold text-pink-800">Kecil</div>
+                    </button>
+                    
+                    <div class="text-4xl font-black text-slate-300">VS</div>
+
+                    <button onclick="compareSize('Gajah', 'Besar')" 
+                        class="btn-3d bg-pink-50 border-pink-200 p-10 rounded-3xl hover:bg-pink-100">
+                        <div class="text-9xl mb-4">🐘</div>
+                        <div class="text-3xl font-bold text-pink-800">Besar</div>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    window.compareSize = function(animal, size) {
+        const msg = `${animal} adalah ${size}.`;
+        setInfo(msg); speak(msg);
     }
 
-    function showSizeCompareLearn(){
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Banding Saiz</h2>
-        <p class="text-center mb-4">Klik mana-mana untuk belajar konsep besar & kecil.</p>
-        <div class="flex justify-center items-end gap-12 mb-4">
-          <button class="p-4 bg-gray-100 rounded-lg"
-                  onclick="say('Semut lebih kecil berbanding gajah.','📏');">
-            <div class="text-5xl">🐜</div><div class="mt-2">Kecil</div>
-          </button>
-          <button class="p-4 bg-gray-100 rounded-lg"
-                  onclick="say('Gajah lebih besar berbanding semut.','📏');">
-            <div class="text-8xl">🐘</div><div class="mt-2">Besar</div>
-          </button>
-        </div>`;
+    /* --- 6. Eksplorasi (Slider + Shape + Color) --- */
+    function setupAct6(content) {
+        setInfo("Ubah saiz, bentuk dan warna.");
+        const colors = { Merah:'#ef4444', Biru:'#3b82f6', Hijau:'#22c55e', Kuning:'#facc15' };
+
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-cyan-600 mb-6">🎚️ Eksplorasi</h3>
+                
+                <div class="bg-slate-50 border-4 border-slate-200 rounded-3xl p-8 mb-6 inline-flex flex-col items-center justify-center min-w-[300px] min-h-[300px]">
+                    <div id="demoShape" class="transition-all duration-300 shadow-xl border-4 border-white/50"
+                         style="width:100px; height:100px; background-color:#3b82f6; border-radius:9999px;">
+                    </div>
+                </div>
+
+                <div class="max-w-md mx-auto space-y-6 bg-white p-6 rounded-2xl border-2 border-slate-100">
+                    <div>
+                        <label class="font-bold text-slate-500 mb-2 block">Saiz</label>
+                        <input id="sizeSlider" type="range" min="40" max="180" value="100" class="w-full" oninput="updateExpSize(this.value)">
+                    </div>
+
+                    <div class="flex justify-center gap-3">
+                        <button onclick="setExpShape('Bulat')" class="btn-3d bg-gray-100 border-gray-300 py-2 px-4 rounded-lg font-bold text-sm">Bulat</button>
+                        <button onclick="setExpShape('Segi Empat')" class="btn-3d bg-gray-100 border-gray-300 py-2 px-4 rounded-lg font-bold text-sm">Segi Empat</button>
+                    </div>
+
+                    <div class="flex justify-center gap-3">
+                         ${Object.entries(colors).map(([n,hex]) => `
+                             <button onclick="setExpColor('${n}', '${hex}')" 
+                                style="background-color:${hex}" 
+                                class="w-10 h-10 rounded-full border-2 border-white shadow-md hover:scale-110 transition-transform">
+                             </button>
+                         `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
-    function showSizeExplore(){
-      const colorMap = { Merah:'#ef4444', Biru:'#3b82f6', Hijau:'#22c55e', Kuning:'#facc15' };
-
-      document.getElementById('mainContent').innerHTML = `
-        <h2 class="text-xl font-bold text-center mb-6">Eksplorasi Saiz & Warna</h2>
-        <p class="text-center mb-4">Laraskan saiz, tukar bentuk & warna. Klik untuk dengar sebutan.</p>
-
-        <div class="flex flex-col items-center gap-5">
-          <div id="demoShape" class="shadow inline-block"
-               style="width:48px;height:48px;border-radius:9999px;background:#3b82f6"></div>
-
-          <div class="text-sm text-gray-700">
-            <span>Saiz: </span><span id="sizeLabel" class="font-semibold">Sederhana</span>
-            <span class="mx-2">|</span>
-            <span>Bentuk: </span><span id="shapeLabel" class="font-semibold">Bulat</span>
-            <span class="mx-2">|</span>
-            <span>Warna: </span><span id="colorLabel" class="font-semibold">Biru</span>
-          </div>
-
-          <div class="w-full max-w-md">
-            <input id="sizeSlider" type="range" min="24" max="120" value="48" class="w-full accent-blue-600">
-            <div class="mt-1 text-center text-xs text-gray-600">Seret pemegang untuk ubah saiz</div>
-          </div>
-
-          <div class="flex gap-2">
-            <button class="px-3 py-2 rounded bg-green-100 hover:bg-green-200"  onclick="snapSize('kecil')">Kecil</button>
-            <button class="px-3 py-2 rounded bg-yellow-100 hover:bg-yellow-200" onclick="snapSize('sederhana')">Sederhana</button>
-            <button class="px-3 py-2 rounded bg-red-100 hover:bg-red-200"     onclick="snapSize('besar')">Besar</button>
-          </div>
-
-          <div class="flex items-center gap-2 mt-2">
-            <span class="text-sm text-gray-600">Bentuk:</span>
-            <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" onclick="setShape('Bulat')">Bulat</button>
-            <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" onclick="setShape('Segi Empat')">Segi Empat</button>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">Warna:</span>
-            ${Object.entries(colorMap).map(([n,hex]) => `
-              <button class="w-8 h-8 rounded-full border" style="background:${hex}" title="${n}"
-                      onclick="setColor('${n}')"></button>
-            `).join('')}
-          </div>
-        </div>`;
-
-      const shapeEl = document.getElementById('demoShape');
-      const sizeLab = document.getElementById('sizeLabel');
-      const shapeLab = document.getElementById('shapeLabel');
-      const colorLab = document.getElementById('colorLabel');
-      const slider  = document.getElementById('sizeSlider');
-
-      function sizeToLabel(px){ if(px<40) return 'Kecil'; if(px>80) return 'Besar'; return 'Sederhana'; }
-      function updateSize(px){
-        shapeEl.style.width = px+'px'; shapeEl.style.height = px+'px';
-        const label = sizeToLabel(px);
-        sizeLab.textContent = label; say(`Ini saiz ${label.toLowerCase()}.`, '📏');
-      }
-      slider.addEventListener('input', e => updateSize(parseInt(e.target.value,10)));
-
-      window.snapSize = (mode)=>{ const preset = mode==='kecil'?28 : mode==='besar'?100 : 60; slider.value = preset; updateSize(preset); };
-      window.setShape = (name)=>{ shapeEl.style.borderRadius = (name==='Bulat')?'9999px':'0px'; shapeLab.textContent=name; say(`Bentuk ${name.toLowerCase()}.`, '🔺'); };
-      window.setColor = (name)=>{ shapeEl.style.background = colorMap[name]; colorLab.textContent=name; say(`Warna ${name.toLowerCase()}.`, '🎨'); };
-
-      updateSize(48); window.setShape('Bulat'); window.setColor('Biru');
+    window.updateExpSize = function(val) {
+        const el = document.getElementById('demoShape');
+        el.style.width = val + 'px';
+        el.style.height = val + 'px';
+        let label = val < 70 ? 'Kecil' : val > 140 ? 'Besar' : 'Sederhana';
+        setInfo(`Saiz ${label}.`);
     }
 
-    // GO!
-    init();
+    window.setExpShape = function(shape) {
+        const el = document.getElementById('demoShape');
+        el.style.borderRadius = (shape === 'Bulat') ? '9999px' : '16px';
+        setInfo(`Bentuk ${shape}.`); speak(shape);
+    }
+
+    window.setExpColor = function(name, hex) {
+        const el = document.getElementById('demoShape');
+        el.style.backgroundColor = hex;
+        setInfo(`Warna ${name}.`); speak(name);
+    }
+
   </script>
 </body>
 </html>
